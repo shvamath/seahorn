@@ -85,6 +85,8 @@ namespace seahorn {
 	  type_t domain = marshal(e->left(), yices, cache);
 	  type_t range = marshal(e->right(), yices, cache);
 	  type_t array_type = yices_function_type1(domain, range);
+	  // XXX: probably need to give this type a name and remember it for when we unmarshall
+	  // terms of this type
 	  res = array_type;
 	}
 	else if (isOpX<BVSORT>(e))
@@ -97,16 +99,13 @@ namespace seahorn {
 	}
 	else if (isOpX<MPQ>(e)) {
 	  // GMP library 
-	  // term_t yices_mpq(const mpq_t q)
 	  const MPQ &op = dynamic_cast<const MPQ &>(e->op());
-	  //  XXX: res = yices_mpq(op /* turn MPQ into mpq_t ?? */)
+	  res = yices_mpq(op.get().get_mpq_t());
 	}
 	else if (isOpX<MPZ>(e)) {
 	  // GMP library 
-	  //  term_t yices_mpz(const mpz_t z)
 	  const MPZ &op = dynamic_cast<const MPZ &>(e->op());
-	  //  XXX: res = yices_mpz(op /* turn MPZ into mpz_t ?? */)
-
+	  res =  yices_mpz(op.get().get_mpz_t());
 	}
 	else if (bv::is_bvnum(e)) {
 	  const MPZ &num = dynamic_cast<const MPZ &>(e->arg(0)->op());
@@ -130,6 +129,8 @@ namespace seahorn {
 	  else
 	    // -- for non-string named variables use address
 	    sname = "I" + lexical_cast<std::string, void *>(name.get());
+
+	  //XXX: I need to look and see if I have already made this variable!
 
 	  res =  yices_new_uninterpreted_term(var_type);
 	  int32_t errcode = yices_set_term_name(res, sname.c_str());
@@ -250,21 +251,17 @@ namespace seahorn {
 
       /** Bit-Vectors */
       else if (isOpX<BSEXT>(e) || isOpX<BZEXT>(e)) {
-
-        /*
-        assert(Z3_get_sort_kind(ctx, Z3_get_sort(ctx, t1)) == Z3_BV_SORT);
-        unsigned t1_sz = Z3_get_bv_sort_size(ctx, Z3_get_sort(ctx, t1));
+	assert(yices_term_is_bitvector(t1));
+	type_t bvt = yices_type_of_term(t1);
+	uint32_t t1_sz = yices_term_bitsize(t1);
+	unsigned t2_sz = bv::width(e->arg(1));
         assert(t1_sz > 0);
-        assert(t1_sz < bv::width(e->arg(1)));
-        if (isOpX<BSEXT>(e))
-          res = z3::ast(ctx,
-                        Z3_mk_sign_ext(ctx, bv::width(e->arg(1)) - t1_sz, t1));
-        else if (isOpX<BZEXT>(e))
-          res = z3::ast(ctx,
-                        Z3_mk_zero_ext(ctx, bv::width(e->arg(1)) - t1_sz, t1));
-        else
-          assert(0);
-        */
+        assert(t1_sz < t2_sz);
+	if (isOpX<BSEXT>(e)){
+	  yices_sign_extend(t1, t2_sz - t1_sz);
+	}  else {
+	  yices_zero_extend(t1, t2_sz - t1_sz);
+	}
       } else if (isOpX<BAND>(e))
         res = yices_bvand2(t1, t2);
       else if (isOpX<BOR>(e))
