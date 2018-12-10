@@ -41,7 +41,7 @@ if (GIT_FOUND)
     CACHE STRING "sea-dsa repo")
   set (CRAB_LLVM_REPO "https://github.com/seahorn/crab-llvm"
     CACHE STRING "crab-llvm repo")
-  
+
   add_custom_target (seahorn-llvm-git
     ${GIT_EXECUTABLE} clone ${SEAHORN_LLVM_REPO} ${CMAKE_SOURCE_DIR}/llvm-seahorn)
   add_custom_target (llvm-dsa-git
@@ -83,7 +83,7 @@ set_property(DIRECTORY PROPERTY EP_STEP_TARGETS configure build test)
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  set(CMAKE_MACOSX_RPATH TRUE)  
+  set(CMAKE_MACOSX_RPATH TRUE)
   set(CMAKE_INSTALL_RPATH "@loader_path/../lib")
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(CMAKE_INSTALL_RPATH "\$ORIGIN/../lib")
@@ -102,7 +102,7 @@ ExternalProject_Add(z3
   -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
   -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
   -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
-  -DBUILD_LIBZ3_SHARED:BOOL=FALSE  
+  -DBUILD_LIBZ3_SHARED:BOOL=FALSE
   TEST_AFTER_INSTALL 1
   TEST_COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_LIST_FILE}
   LOG_CONFIGURE 1
@@ -123,6 +123,14 @@ else()
   install (PROGRAMS ${Z3_EXECUTABLE} DESTINATION bin)
 endif()
 
+# Find Yices
+SET(YICES2_HOME CACHE STRING "Yices2 installation directory")
+find_package(Yices2 2.6.0)
+if (YICES2_FOUND)
+  add_definitions(-DWITH_YICES2)
+  include_directories(${YICES2_INCLUDE_DIR})
+endif()
+
 ExternalProject_Add (llvm
   SVN_REPOSITORY http://llvm.org/svn/llvm-project/llvm/tags/RELEASE_380/final/
   SOURCE_DIR ${CMAKE_SOURCE_DIR}/ext/llvm
@@ -137,7 +145,7 @@ ExternalProject_Add (llvm
   -DLLVM_INCLUDE_TESTS:BOOL=OFF
   -DLLVM_INCLUDE_GO_TESTS=OFF
   -DLLVM_INCLUDE_EXAMPLES=OFF
-  -DLLVM_INCLUDE_DOCS=OFF    
+  -DLLVM_INCLUDE_DOCS=OFF
   -DLLVM_BINDINGS_LIST=" "
   TEST_AFTER_INSTALL 1
   TEST_COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_LIST_FILE}
@@ -344,7 +352,7 @@ if (IS_DIRECTORY ${CMAKE_SOURCE_DIR}/crab-llvm AND
     EXISTS ${CMAKE_SOURCE_DIR}/crab-llvm/CMakeLists.txt)
   add_subdirectory(${CMAKE_SOURCE_DIR}/crab-llvm)
   set (HAVE_CRAB_LLVM TRUE)
-  include_directories (${CRABLLVM_INCLUDE_DIRS})  
+  include_directories (${CRABLLVM_INCLUDE_DIRS})
 else()
   message (WARNING "No CRAB-LLVM found in ${CMAKE_SOURCE_DIR}/crab-llvm. Run\n\tcmake --build . --target extra && cmake ${CMAKE_SOURCE_DIR}")
 endif()
