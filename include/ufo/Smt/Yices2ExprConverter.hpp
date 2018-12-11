@@ -98,12 +98,12 @@ namespace seahorn {
 	  res = yices_parse_float(sname.c_str());
 	}
 	else if (isOpX<MPQ>(e)) {
-	  // GMP library 
+	  // GMP library
 	  const MPQ &op = dynamic_cast<const MPQ &>(e->op());
 	  res = yices_mpq(op.get().get_mpq_t());
 	}
 	else if (isOpX<MPZ>(e)) {
-	  // GMP library 
+	  // GMP library
 	  const MPZ &op = dynamic_cast<const MPZ &>(e->op());
 	  res =  yices_mpz(op.get().get_mpz_t());
 	}
@@ -130,11 +130,20 @@ namespace seahorn {
 	    // -- for non-string named variables use address
 	    sname = "I" + lexical_cast<std::string, void *>(name.get());
 
-	  //XXX: I need to look and see if I have already made this variable!
+      const char* varname = sname.c_str();
 
-	  res =  yices_new_uninterpreted_term(var_type);
-	  int32_t errcode = yices_set_term_name(res, sname.c_str());
-	  check_yices_error(errcode, "BasicExprMarshal: variable case");
+	  //Look and see if I have already made this variable!
+      term_t var =  yices_get_term_by_name(varname);
+      if (var != NULL_TERM){
+        //check that we don't have name clashes
+        type_t pvar_type = yices_type_of_term(var);
+        assert(pvar_type == var_type);
+        res = var;
+      } else {
+        res =  yices_new_uninterpreted_term(var_type);
+        int32_t errcode = yices_set_term_name(res, varname);
+        check_yices_error(errcode, "BasicExprMarshal: variable case");
+      }
 	}
 	/** function declaration */
 	else if (bind::isFdecl(e)) {
@@ -163,7 +172,7 @@ namespace seahorn {
 
 	/** other terminal expressions */
 	if (arity == 0) {
-	  // FAIL 
+	  // FAIL
 	  return M::marshal(e, yices, cache);
 	}
     else if (arity == 1) {
