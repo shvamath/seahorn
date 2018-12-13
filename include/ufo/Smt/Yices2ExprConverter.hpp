@@ -15,9 +15,10 @@ namespace seahorn {
 
     class yices_impl;
 
+    //XXX: I would really like to get rid of this style.
     struct FailMarshal {
       template <typename C>
-      static term_t marshal(Expr e, yices_impl &yices, C &cache) {
+      static term_t marshal(Expr e, yices_impl &yices, C &cache, std::vector<type_t> &arrays) {
         llvm::errs() << "Cannot marshal: " << *e << "\n";
         assert(0);
         exit(1);
@@ -26,7 +27,7 @@ namespace seahorn {
 
     struct FailUnmarshal {
       template <typename C>
-      static Expr unmarshal(term_t yt, ExprFactory &efac, C &cache) {
+      static Expr unmarshal(term_t yt, ExprFactory &efac, C &cache, std::vector<type_t> &arrays) {
         llvm::errs() << "Cannot unmarshal: " << std::string(yices_term_to_string(yt, 120, 40, 0))
                      << "\n";
         assert(0);
@@ -64,10 +65,13 @@ namespace seahorn {
     }
 
 
-    //M is destined to be Failure!
+    // M is destined to be Failure!
+    // arrays are the types declared as arrays; something better than a vector is likely.
+    // might also want to keep track of those function types that are not arrays. I have
+    // no idea what to do if there is ambiguity here.
     template <typename M> struct BasicExprMarshal {
       template <typename C>
-      static term_t marshal(Expr e, yices_impl &yices, C &cache){
+      static term_t marshal(Expr e, yices_impl &yices, C &cache, std::vector<type_t> &arrays){
 
         assert(e);
 
@@ -88,9 +92,9 @@ namespace seahorn {
         /* IAM: I really think we should have marshalTerm and marshalType */
         if (bind::isBVar(e)) {
           // XXX:  this is destined to be bound!
-          type_t vartype = marshal(bind::type(e), yices, cache);
+          type_t vartype = marshal(bind::type(e), yices, cache, arrays);
           unsigned debruijn_index = bind::bvarId(e);
-          // XXX: kosher to use the index as a name?
+          // XXX: kosher to use the index as a name? NO
           std::string varname = "db_var" + std::to_string(debruijn_index);
           res = yices_new_variable(vartype);
           assert(res != NULL_TERM);
@@ -104,9 +108,10 @@ namespace seahorn {
         else if (isOpX<BOOL_TY>(e))
           res = yices_bool_type();
         else if (isOpX<ARRAY_TY>(e)) {
-          type_t domain = marshal(e->left(), yices, cache);
-          type_t range = marshal(e->right(), yices, cache);
+          type_t domain = marshal(e->left(), yices, cache, arrays);
+          type_t range = marshal(e->right(), yices, cache, arrays);
           type_t array_type = yices_function_type1(domain, range);
+          arrays.push_back(array_type);
           // XXX: probably need to give this type a name and remember it for when we unmarshall
           // terms of this type
           // ZZZ: Another point in favor of marshalTerm and mashalType
@@ -175,11 +180,11 @@ namespace seahorn {
 
           std::vector<type_t> domain(arity);
           for (size_t i = 0; i < bind::domainSz(e); ++i) {
-            type_t t_i = marshal(bind::domainTy(e, i), yices, cache);
+            type_t t_i = marshal(bind::domainTy(e, i), yices, cache, arrays);
             domain[i] = t_i;
           }
 
-          type_t range = marshal(bind::rangeTy(e), yices, cache);
+          type_t range = marshal(bind::rangeTy(e), yices, cache, arrays);
 
           type_t declaration_type = yices_function_type(e->arity(), &domain[0], range);
           assert(declaration_type != NULL_TYPE);
@@ -208,7 +213,7 @@ namespace seahorn {
           unsigned pos = 0;
           for (ENode::args_iterator it = ++(e->args_begin()), end = e->args_end();
                it != end; ++it) {
-            term_t arg_i = marshal(*it, yices, cache);
+            term_t arg_i = marshal(*it, yices, cache, arrays);
             assert(arg_i != NULL_TERM);
             args[pos++] = arg_i;
           }
@@ -225,12 +230,12 @@ namespace seahorn {
           bound_vars.reserve(num_bound);
           for (unsigned i = 0; i < num_bound; ++i) {
             //XXX: check this with JN
-            term_t var_i = marshal(bind::decl(e, i), yices, cache);
+            term_t var_i = marshal(bind::decl(e, i), yices, cache, arrays);
             assert(var_i != NULL_TERM);
             bound_vars.push_back(var_i);
           }
 
-          term_t body = marshal(bind::body(e), yices, cache);
+          term_t body = marshal(bind::body(e), yices, cache, arrays);
 
           if (isOpX<FORALL>(e) ){
             res = yices_forall(num_bound, &bound_vars[0], body);
@@ -258,11 +263,11 @@ namespace seahorn {
         /** other terminal expressions */
         if (arity == 0) {
           // FAIL
-          return M::marshal(e, yices, cache);
+          return M::marshal(e, yices, cache, arrays);
         }
         else if (arity == 1) {
 
-          term_t arg = marshal(e->left(), yices, cache);
+          term_t arg = marshal(e->left(), yices, cache, arrays);
 
           if (isOpX<UN_MINUS>(e)) {
             return yices_neg(arg);
@@ -272,6 +277,7 @@ namespace seahorn {
           }
           else if (isOpX<ARRAY_DEFAULT>(e)) {
             //XXX: huh?
+            //BD and JN throw an exception here
           }
           else if (isOpX<BNOT>(e)) {
             return yices_bvnot(arg);
@@ -286,12 +292,12 @@ namespace seahorn {
             return yices_redor(arg);
           }
           else {
-            return M::marshal(e, yices, cache);
+            return M::marshal(e, yices, cache, arrays);
           }
         }
         else if (arity == 2){
-          term_t t1 = marshal(e->left(), yices, cache);
-          term_t t2 = marshal(e->right(), yices, cache);
+          term_t t1 = marshal(e->left(), yices, cache, arrays);
+          term_t t2 = marshal(e->right(), yices, cache, arrays);
 
           if (isOpX<AND>(e))
             res = yices_and2(t1, t2);
@@ -316,9 +322,14 @@ namespace seahorn {
             res = yices_division(t1, t2);
           else if (isOpX<MOD>(e))
             res = yices_imod(t1, t2);
-          else if (isOpX<REM>(e))
-            //XXX: res = yices_???div(t1, t2);  need to encode rem
-            res = yices_idiv(t1, t2);
+          else if (isOpX<REM>(e)){
+            //XXX: res = yices_??? div(t1, t2);  need to encode rem
+            //throw an exception for the time being.
+            //http://smtlib.cs.uiowa.edu/logics-all.shtml#QF_BV
+            llvm::errs() << "rem on integers needs to be suffered through: " << *e << "\n";
+            assert(0);
+            exit(1);
+          }
           /** Comparison Op */
           else if (isOpX<EQ>(e))
             res = yices_eq(t1, t2);
@@ -410,12 +421,12 @@ namespace seahorn {
             res = yices_bvashr(t1, t2);
 
           else
-            return M::marshal(e, yices, cache);
+            return M::marshal(e, yices, cache, arrays);
 
 
         } else if (isOpX<BEXTRACT>(e)) {
           assert(bv::high(e) >= bv::low(e));
-          term_t b = marshal(bv::earg(e), yices, cache);
+          term_t b = marshal(bv::earg(e), yices, cache, arrays);
           res = yices_bvextract(b, bv::low(e), bv::high(e));
         } else if (isOpX<AND>(e) || isOpX<OR>(e) || isOpX<ITE>(e) ||
                    isOpX<XOR>(e) || isOpX<PLUS>(e) || isOpX<MINUS>(e) ||
@@ -424,7 +435,7 @@ namespace seahorn {
           std::vector<term_t> args;
           for (ENode::args_iterator it = e->args_begin(), end = e->args_end();
                it != end; ++it) {
-            term_t yt  = marshal(*it, yices, cache);
+            term_t yt  = marshal(*it, yices, cache, arrays);
             args.push_back(yt);
           }
 
@@ -450,18 +461,26 @@ namespace seahorn {
           } else if (isOp<ARRAY_MAP>(e)) {
             //Z3_func_decl fdecl = reinterpret_cast<Z3_func_decl>(args[0]);
             //res = Z3_mk_map(ctx, fdecl, e->arity() - 1, &args[1]);
+            //BD says can't really handle this case
           }
         } else
-          return M::marshal(e, yices, cache);
+          return M::marshal(e, yices, cache, arrays);
 
         assert(res != NULL_TERM);
         return res;
       }
     };
 
+    //XXX: not sure why the Z3 version handles more than is necessary.
     template <typename M> struct BasicExprUnmarshal {
       template <typename C>
-      static Expr unmarshal(term_t yt, yices_impl &yices, ExprFactory &efac, C &cache){
+      static Expr unmarshal(term_t yt, yices_impl &yices, ExprFactory &efac, C &cache, std::vector<type_t> &arrays){
+
+        assert(yt != NULL_TERM);
+
+        type_t ytyp =  yices_type_of_term(yt);
+
+        assert(yt != NULL_TYPE);
 
         term_constructor_t constructor = yices_term_constructor(yt);
 
@@ -469,20 +488,21 @@ namespace seahorn {
 
           assert(0 && "Not a yices term");
         }
-
+        Expr res = nullptr;
         /* atomic terms */
         switch(constructor){
         case YICES_BOOL_CONSTANT: {
           int32_t value;
           int32_t errcode = yices_bool_const_value(yt, &value);
           assert(errcode != -1);
-          return value == 1 ? mk<TRUE>(efac) : mk<FALSE>(efac);
+          res = value == 1 ? mk<TRUE>(efac) : mk<FALSE>(efac);
         }
         case YICES_ARITH_CONSTANT: {
           mpq_t q;
           mpq_init(q);
           int32_t errcode = yices_rational_const_value(yt, q);
-          //XXX: do something with q
+          mpq_class qpp(q);
+          res = mkTerm(qpp, efac);
           mpq_clear(q);
           break;
         }
@@ -490,6 +510,7 @@ namespace seahorn {
           uint32_t n = yices_term_bitsize(yt);
           int32_t vals[n];
           int32_t errcode = yices_bv_const_value(yt, vals);
+          // gotta turn the puppy into a string.
           //XXX: do something with n and vals
           break;
         }
@@ -523,89 +544,10 @@ namespace seahorn {
           std::vector<term_t> args;
           for(int i = 0; i < num_children; i++){
             term_t yt_i = yices_term_child(yt, i);
-            Expr a_i = unmarshal(yt_i, yices, efac, cache);
+            Expr a_i = unmarshal(yt_i, yices, efac, cache, arrays);
             args.push_back(yt_i);
           }
 
-          if (constructor == YICES_ITE_TERM ){
-          }
-          else if (constructor == YICES_APP_TERM ){
-          }
-          else if (constructor == YICES_UPDATE_TERM ){
-          }
-          else if (constructor == YICES_TUPLE_TERM ){
-          }
-          else if (constructor == YICES_EQ_TERM ){
-          }
-          else if (constructor == YICES_DISTINCT_TERM ){
-          }
-          else if (constructor == YICES_FORALL_TERM ){
-          }
-          else if (constructor == YICES_LAMBDA_TERM ){
-          }
-          else if (constructor == YICES_NOT_TERM ){
-          }
-          else if (constructor == YICES_OR_TERM ){
-          }
-          else if (constructor == YICES_XOR_TERM ){
-          }
-          else if (constructor == YICES_BV_ARRAY ){
-          }
-          else if (constructor == YICES_BV_DIV ){
-          }
-          else if (constructor == YICES_BV_REM ){
-          }
-          else if (constructor == YICES_BV_SDIV ){
-          }
-          else if (constructor == YICES_BV_SREM ){
-          }
-          else if (constructor == YICES_BV_SMOD ){
-          }
-          else if (constructor == YICES_BV_SHL ){
-          }
-          else if (constructor == YICES_BV_LSHR ){
-          }
-          else if (constructor == YICES_BV_ASHR ){
-          }
-          else if (constructor == YICES_BV_GE_ATOM ){
-          }
-          else if (constructor == YICES_BV_SGE_ATOM ){
-          }
-          else if (constructor == YICES_ARITH_GE_ATOM ){
-          }
-          else if (constructor == YICES_ARITH_ROOT_ATOM ){
-          }
-          else if (constructor == YICES_ABS ){
-          }
-          else if (constructor == YICES_CEIL ){
-          }
-          else if (constructor == YICES_FLOOR ){
-          }
-          else if (constructor == YICES_RDIV ){
-          }
-          else if (constructor == YICES_IDIV ){
-          }
-          else if (constructor == YICES_IMOD ){
-          }
-          else if (constructor == YICES_IS_INT_ATOM ){
-          }
-          else if (constructor == YICES_DIVIDES_ATOM ){
-          }
-          else if (constructor == YICES_SELECT_TERM ){
-          }
-          else if (constructor == YICES_BIT_TERM ){
-          }
-          else if (constructor == YICES_BV_SUM ){
-          }
-          else if (constructor == YICES_ARITH_SUM ){
-          }
-          else if (constructor == YICES_POWER_PRODUCT ){
-
-          }
-          else {
-
-
-          }
 
         }
 

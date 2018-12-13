@@ -3,6 +3,7 @@ add_subdirectory(seahorn)
 add_subdirectory(Analysis)
 add_subdirectory(Transforms)
 add_subdirectory(Support)
+add_subdirectory(ufo/Smt)
 
 add_llvm_loadable_module (shadow
   Transforms/Instrumentation/ShadowMemDsa.cc   
