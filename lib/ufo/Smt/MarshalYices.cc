@@ -465,7 +465,7 @@ namespace seahorn {
     }
 
     //XXX: kind of ugly to have the cache here. Maybe we should push it into the yices context and pass that around.
-    //     would be more uniform with the Z3 case.
+    //     would be more uniform with the Z3 case.  WHY NOT MAKE IT STATIC SOMEWHERE?
     Expr marshal_yices::eval(Expr expr,  ExprFactory &efac, std::map<Expr, term_t> &cache, bool complete, model_t *model){
 
       term_t yt_var = encode_term(expr, cache);
@@ -482,37 +482,45 @@ namespace seahorn {
 
       yval_t yval;
       int32_t errcode = yices_get_value(model, yt_var, &yval);
-      
-      term_constructor_t constructor = yices_term_constructor(yt);
-      
-      if (constructor ==  YICES_CONSTRUCTOR_ERROR){
-	
-	assert(0 && "Not a yices term");
+
+      if(errcode == -1){
+	return nullptr;
       }
+
+      
       Expr res = nullptr;
       /* atomic terms */
-      switch(constructor){
+      switch(yval.node_tag){
       case YICES_BOOL_CONSTANT: {
 	int32_t value;
-	int32_t errcode = yices_bool_const_value(yt, &value);
-	assert(errcode != -1);
+	int32_t errcode = yices_val_get_bool(model, &yval, &value);
+	if(errcode == -1){
+	  return nullptr;
+	}
 	res = value == 1 ? mk<TRUE>(efac) : mk<FALSE>(efac);
       }
       case YICES_ARITH_CONSTANT: {
 	mpq_t q;
 	mpq_init(q);
-	int32_t errcode = yices_rational_const_value(yt, q);
+	int32_t errcode = yices_val_get_mpq(model, &yval, q);
 	mpq_class qpp(q);
 	res = mkTerm(qpp, efac);
 	mpq_clear(q);
 	break;
       }
       case YICES_BV_CONSTANT: {
-	uint32_t n = yices_term_bitsize(yt);
+	uint32_t n = yices_val_bitsize(model, &yval);
+	if (n == 0){
+	  return nullptr;
+	}
 	int32_t vals[n];
-	int32_t errcode = yices_bv_const_value(yt, vals);
-	// gotta turn the puppy into a string.
-	//XXX: do something with n and vals
+	int32_t errcode = yices_val_get_bv(model, &yval, vals);
+	char cvals[n];
+	for(int32_t i = 0; i < n; i++){
+	  cvals[i] = vals[i] ? '1' : '0';
+	}
+	std::string snum(cvals);
+	res = bv::bvnum(mpz_class(snum), n, efac);
 	break;
       }
       case YICES_SCALAR_CONSTANT: {
@@ -520,18 +528,19 @@ namespace seahorn {
 	break;
       }
       case YICES_VARIABLE: {
-
+	assert(0 && "Not expecting a scalar");
 	break;
       }
       case YICES_UNINTERPRETED_TERM: {
-
+	assert(0 && "Not expecting a scalar");
 	break;
       }
       default:
+	assert(0 && "Not expecting a scalar");
 	break;
       }
 
-      /* composite terms */
+      /* composite terms
 
 
       int32_t num_children = yices_term_num_children(yt);
@@ -551,10 +560,8 @@ namespace seahorn {
 
 
       }
-
-      return 0;
-
-
+      */
+      
       return nullptr;
     }
 

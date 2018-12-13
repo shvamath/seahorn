@@ -4,7 +4,6 @@
 #include "yices.h"
 
 #include "Solver.hpp"
-#include "Yices2ExprConverter.hpp"
 
 namespace seahorn {
   namespace yices {
