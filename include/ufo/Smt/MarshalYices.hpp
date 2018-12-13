@@ -7,7 +7,7 @@
 #include "ufo/ExprLlvm.hpp"
 #include "Yices2.hpp"
 
-using namespace expr;
+//using namespace expr;
 
 namespace seahorn {
   namespace yices {
@@ -24,11 +24,11 @@ namespace seahorn {
 
     public:
 
-      term_t encode_term(Expr exp, std::map<Expr, term_t> &cache);
+      term_t encode_term(expr::Expr exp, std::map<expr::Expr, term_t> &cache);
 
-      bool encode_type(Expr exp, ytype_t &ytp);
+      bool encode_type(expr::Expr exp, ytype_t &ytp);
 
-      Expr eval(Expr expr,  ExprFactory &efac, bool complete, model_t *model);
+      expr::Expr eval(expr::Expr expr,  expr::ExprFactory &efac, bool complete, model_t *model);
 
 
 
