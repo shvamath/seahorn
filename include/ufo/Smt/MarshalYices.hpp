@@ -5,7 +5,6 @@
 #include "yices.h"
 
 #include "ufo/ExprLlvm.hpp"
-#include "Yices2.hpp"
 
 //using namespace expr;
 
@@ -14,7 +13,7 @@ namespace seahorn {
 
 
     typedef struct {
-      type_t ytyp;
+      type_t ytype;
       bool is_array;
     } ytype_t;
 
