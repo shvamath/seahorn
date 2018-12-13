@@ -8,14 +8,14 @@ namespace seahorn {
   namespace yices {
 
     static term_t encode_term_fail(Expr e, const char* error_msg) {
-        llvm::errs() << "encode_term: failed on "
-		     << *e
-		     << "\n"
-		     << error_msg
-		     << "\n";
-        assert(0);
-        exit(1);
-      }
+      llvm::errs() << "encode_term: failed on "
+		   << *e
+		   << "\n"
+		   << error_msg
+		   << "\n";
+      assert(0);
+      exit(1);
+    }
 
     static std::string get_function_name(Expr e){
       Expr fname = bind::fname(e);
@@ -464,7 +464,97 @@ namespace seahorn {
       return res;
     }
 
-    Expr marshal_yices::eval(Expr expr,  ExprFactory &efac, bool complete, model_t *model){
+    //XXX: kind of ugly to have the cache here. Maybe we should push it into the yices context and pass that around.
+    //     would be more uniform with the Z3 case.
+    Expr marshal_yices::eval(Expr expr,  ExprFactory &efac, std::map<Expr, term_t> &cache, bool complete, model_t *model){
+
+      term_t yt_var = encode_term(expr, cache);
+
+      if(yt_var == NULL_TERM){
+	return nullptr;
+      }
+
+      type_t ytyp_var =  yices_type_of_term(yt_var);
+
+      if(ytyp_var == NULL_TYPE){
+	return nullptr;
+      }
+
+      yval_t yval;
+      int32_t errcode = yices_get_value(model, yt_var, &yval);
+      
+      term_constructor_t constructor = yices_term_constructor(yt);
+      
+      if (constructor ==  YICES_CONSTRUCTOR_ERROR){
+	
+	assert(0 && "Not a yices term");
+      }
+      Expr res = nullptr;
+      /* atomic terms */
+      switch(constructor){
+      case YICES_BOOL_CONSTANT: {
+	int32_t value;
+	int32_t errcode = yices_bool_const_value(yt, &value);
+	assert(errcode != -1);
+	res = value == 1 ? mk<TRUE>(efac) : mk<FALSE>(efac);
+      }
+      case YICES_ARITH_CONSTANT: {
+	mpq_t q;
+	mpq_init(q);
+	int32_t errcode = yices_rational_const_value(yt, q);
+	mpq_class qpp(q);
+	res = mkTerm(qpp, efac);
+	mpq_clear(q);
+	break;
+      }
+      case YICES_BV_CONSTANT: {
+	uint32_t n = yices_term_bitsize(yt);
+	int32_t vals[n];
+	int32_t errcode = yices_bv_const_value(yt, vals);
+	// gotta turn the puppy into a string.
+	//XXX: do something with n and vals
+	break;
+      }
+      case YICES_SCALAR_CONSTANT: {
+	assert(0 && "Not expecting a scalar");
+	break;
+      }
+      case YICES_VARIABLE: {
+
+	break;
+      }
+      case YICES_UNINTERPRETED_TERM: {
+
+	break;
+      }
+      default:
+	break;
+      }
+
+      /* composite terms */
+
+
+      int32_t num_children = yices_term_num_children(yt);
+
+      if ( yices_term_is_projection(yt) ){
+
+
+
+      } else {
+
+	std::vector<term_t> args;
+	for(int i = 0; i < num_children; i++){
+	  term_t yt_i = yices_term_child(yt, i);
+	  Expr a_i = unmarshal(yt_i, yices, efac, cache, arrays);
+	  args.push_back(yt_i);
+	}
+
+
+      }
+
+      return 0;
+
+
       return nullptr;
     }
 

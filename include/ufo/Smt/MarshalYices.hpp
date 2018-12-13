@@ -27,7 +27,7 @@ namespace seahorn {
 
       bool encode_type(expr::Expr exp, ytype_t &ytp);
 
-      expr::Expr eval(expr::Expr expr,  expr::ExprFactory &efac, bool complete, model_t *model);
+      expr::Expr eval(expr::Expr expr,  expr::ExprFactory &efac, std::map<Expr, term_t> &cache, bool complete, model_t *model);
 
 
 
