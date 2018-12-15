@@ -11,6 +11,8 @@ namespace seahorn {
 
     class Solver {
 
+      solver_options d_options;
+
     public:
 
       /** Result of the check */
@@ -37,8 +39,10 @@ namespace seahorn {
       virtual void pop() = 0;
 
       /** Get a model */
-      virtual model get_model() = 0;
+      virtual model *get_model() = 0;
 
+
+      Solver(solver_options options): d_options(options) { }
 
 
     };
