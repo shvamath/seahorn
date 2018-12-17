@@ -21,17 +21,17 @@ namespace seahorn {
 
     public:
 
-      term_t encode_term(expr::Expr exp, std::map<expr::Expr, term_t> &cache);
+      static term_t encode_term(expr::Expr exp, std::map<expr::Expr, term_t> &cache);
 
-      bool encode_type(expr::Expr exp, ytype_t &ytp);
+      static bool encode_type(expr::Expr exp, ytype_t &ytp);
 
-      expr::Expr eval(expr::Expr expr,  expr::ExprFactory &efac, std::map<expr::Expr, term_t> &cache, bool complete, model_t *model);
+      static expr::Expr eval(expr::Expr expr,  expr::ExprFactory &efac, std::map<expr::Expr, term_t> &cache, bool complete, model_t *model);
 
-      expr::Expr decode_type(type_t yty, expr::ExprFactory &efac);
+      static expr::Expr decode_type(type_t yty, expr::ExprFactory &efac);
 
     private:
       
-      expr::Expr decode_yval(yval_t &yval,  expr::ExprFactory &efac, model_t *model, bool isArray);
+      static expr::Expr decode_yval(yval_t &yval,  expr::ExprFactory &efac, model_t *model, bool isArray);
       
     };
   }

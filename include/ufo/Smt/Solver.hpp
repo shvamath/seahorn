@@ -11,7 +11,7 @@ namespace seahorn {
 
     class Solver {
 
-      solver_options d_options;
+      solver_options *d_options;
 
     public:
 
@@ -42,7 +42,7 @@ namespace seahorn {
       virtual model *get_model() = 0;
 
 
-      Solver(solver_options options): d_options(options) { }
+      Solver(solver_options *options): d_options(options) { }
 
 
     };

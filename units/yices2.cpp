@@ -1,6 +1,5 @@
 #include "ufo/Smt/ZExprConverter.hpp"
-#include "ufo/Smt/Yices2Solver.hpp"
-#include "ufo/Smt/Yices2Impl.hpp"
+#include "ufo/Smt/Yices2SolverImpl.hpp"
 #include "ufo/Smt/MarshalYices.hpp"
 
 #include "llvm/Support/raw_ostream.h"

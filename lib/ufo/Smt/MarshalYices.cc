@@ -510,9 +510,7 @@ namespace seahorn {
         break;
       }
       case YVAL_RATIONAL: {
-	//XXX: try to get the thing as an MPZ first, if that fails, then get an MPQ.
-
-	//int32_t yices_get_mpz_value(model_t *mdl, term_t t, mpz_t val)
+	// We try to get the thing as an MPZ first, if that fails, then we get an MPQ.
 	mpz_t z;
 	mpz_init(z);
         errcode = yices_val_get_mpz(model, &yval, z);
@@ -523,7 +521,7 @@ namespace seahorn {
 	  break;
 	}
 	mpz_clear(z);
-	// we didn't succeed in extracting it out as a int, so get it as a mpz.
+	// We didn't succeed in extracting it out as a mpz, so get it as a mpz.
 	mpq_t q;
         mpq_init(q);
         errcode = yices_val_get_mpq(model, &yval, q);

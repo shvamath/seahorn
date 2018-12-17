@@ -8,11 +8,18 @@
 namespace seahorn {
   namespace yices {
 
-
-
-
     /* the yices solver; actually a yices context. */
-    class yices_impl {
+    class yices_impl : public solver::Solver {
+
+
+      std::string error_string(){
+	char* emsg = yices_error_string();
+	std::string res(emsg);
+	yices_free_string(emsg);
+	return res;
+      }
+    
+      
 
       ctx_config_t *d_cfg;
 
