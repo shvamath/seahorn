@@ -74,7 +74,7 @@ namespace seahorn {
       }
       int32_t errcode = yices_assert_formula(d_ctx, yt);
       if (errcode == -1){
-	llvm::errs() << "yices_impl::add:  yices_assert_formula failed: " << yices_impl::error_string() << "\n";
+	llvm::errs() << "yices_impl::add:  yices_assert_formula failed: " << yices::error_string() << "\n";
 	return false;
       }
       
@@ -103,10 +103,10 @@ namespace seahorn {
 
     /** Pop a context */
     void yices_impl::pop(){
-      yices_push(d_ctx);
+      yices_pop(d_ctx);
     }
 
-    /** Get a model */
+    /** Get a model   WHO FREES THE MODEL */
     solver::model* yices_impl::get_model(){
       model_t *model = yices_get_model(d_ctx, 1); //BD & JN: keep subst??
       return new model_impl(model, s_cache, d_efac);

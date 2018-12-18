@@ -29,8 +29,6 @@ add_executable(units_z3 EXCLUDE_FROM_ALL
 llvm_config (units_z3 ${LLVM_LINK_COMPONENTS})
 
 target_link_libraries(units_z3 ${USED_LIBS_Z3_TESTS})
-if (YICES2_FOUND)
-  target_link_libraries(units_z3 ${YICES2_LIBRARY})
-endif()
+
 add_custom_target(test_z3 units_z3 DEPENDS units_z3)
 add_test(NAME Z3_SPACER_Tests COMMAND units_z3)

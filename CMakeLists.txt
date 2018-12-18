@@ -129,6 +129,19 @@ find_package(Yices2 2.6.0)
 if (YICES2_FOUND)
   add_definitions(-DWITH_YICES2)
   include_directories(${YICES2_INCLUDE_DIR})
+
+  message ("Using Yices2 at ${YICES2_HOME}")
+
+  # Find LibPoly
+  SET(LIBPOLY_HOME CACHE STRING "LibPoly installation directory")
+  find_package(LibPoly 0.1.5)
+  if (LIBPOLY_FOUND)
+    add_definitions(-DWITH_LIBPOLY)
+    include_directories(${LIBPOLY_INCLUDE_DIR})
+    message ("Using Libpoly at ${LIBPOLY_HOME}")	
+  endif()
+
+
 endif()
 
 ExternalProject_Add (llvm

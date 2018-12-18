@@ -15,7 +15,7 @@ TEST_CASE("yices2.test") {
   using namespace seahorn;
   using namespace yices;
 
-  errs () << "yices2 is fantastic" <<  "\n";
+  llvm::errs () << "yices2 is fantastic" <<  "\n";
 
   ytype_t ytp;
   ExprFactory efac;
@@ -24,5 +24,7 @@ TEST_CASE("yices2.test") {
   //marshal_yices().encode_type(sort::intTy(efac), ytp);
 
 
+  llvm::errs() << yices::error_string() <<  "\n";
+    
   CHECK(true);
 }

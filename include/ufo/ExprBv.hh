@@ -97,6 +97,8 @@ namespace expr
         return bind::mkConst (v, sort);
       }
 
+      inline bool isBvConst (Expr v)
+      {return bind::isConst<BVSORT>(v);}
 
     }
 
