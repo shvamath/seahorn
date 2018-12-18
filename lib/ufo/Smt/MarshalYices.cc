@@ -41,9 +41,8 @@ namespace seahorn {
     }
 
 
-    bool marshal_yices::encode_type(Expr e, ytype_t &ytp){
+    type_t marshal_yices::encode_type(Expr e){
       type_t res = NULL_TYPE;
-      bool is_array = false;
       if (isOpX<INT_TY>(e))
         res = yices_int_type();
       else if (isOpX<REAL_TY>(e))
@@ -51,16 +50,12 @@ namespace seahorn {
       else if (isOpX<BOOL_TY>(e))
         res = yices_bool_type();
       else if (isOpX<ARRAY_TY>(e)) {
-        ytype_t domain, range;
-        if(!encode_type(e->left(), domain)){
-          return false;
-        }
-        if(!encode_type(e->right(), range)){
-          return false;
-        }
-        type_t array_type = yices_function_type1(domain.ytype, range.ytype);
-        res = array_type;
-        is_array = true;
+        type_t domain = encode_type(e->left());
+        type_t range = encode_type(e->right());
+
+	if(domain != NULL_TYPE && range != NULL_TYPE){
+	  res = yices_function_type1(domain, range);
+	}
       }
       else if (isOpX<BVSORT>(e)){
         res = yices_bv_type(bv::width(e));
@@ -69,13 +64,7 @@ namespace seahorn {
         llvm::errs() << "Unhandled sort: " << *e << "\n";
       }
 
-      bool success = (res != NULL_TYPE);
-
-      if(success){
-        ytp.ytype = res;
-        ytp.is_array = is_array;
-      }
-      return success;
+      return res;
     }
 
 
@@ -185,18 +174,19 @@ namespace seahorn {
 
         std::vector<type_t> domain(arity);
         for (size_t i = 0; i < bind::domainSz(e); ++i) {
-          ytype_t yt_i;
-          if(!encode_type(bind::domainTy(e, i), yt_i)){
+          type_t yt_i = encode_type(bind::domainTy(e, i));
+	  if (yt_i == NULL_TYPE){
             encode_term_fail(e, "fdecl domain encode error");
+	    return NULL_TERM;
           }
-          domain[i] = yt_i.ytype;
+          domain[i] = yt_i;
         }
 
-        ytype_t yrange;
-        if(! encode_type(bind::rangeTy(e), yrange) ){
-          encode_term_fail(e, "fdecl range encode error");
+        type_t range = encode_type(bind::rangeTy(e));
+	if (range == NULL_TYPE){
+	  encode_term_fail(e, "fdecl range encode error");
+	  return NULL_TERM;
         }
-        type_t range = yrange.ytype;
 
         type_t declaration_type = yices_function_type(e->arity(), &domain[0], range);
         assert(declaration_type != NULL_TYPE);
@@ -459,7 +449,7 @@ namespace seahorn {
       return res;
     }
 
-    Expr marshal_yices::decode_yval(yval_t &yval,  ExprFactory &efac, model_t *model, bool isArray){
+    Expr marshal_yices::decode_yval(yval_t &yval,  ExprFactory &efac, model_t *model, bool isArray, Expr domain, Expr range){
       Expr res = nullptr;
 
       // for the yices2 API
@@ -556,13 +546,11 @@ namespace seahorn {
           return nullptr;
 	}
 
-	Expr def_val_expr = decode_yval(def_val, efac, model, false);  // Assuming flat arrays.
-	Expr domain =  bind::typeOf(def_val_expr);
-	  
+	Expr def_val_expr = decode_yval(def_val, efac, model, false, nullptr, nullptr);  // Assuming flat arrays.
+
 	uint32_t ncount = yvec.size;
-	
-	// Each row in the vector is going to be (arity + 1) expressions.
-	std::vector<std::vector<Expr>> graph(ncount);
+
+	//  sequence of (args -> val) pairs
 	std::vector<std::pair<ExprVector, Expr>> entries(ncount);
 	
 	for(int32_t i = 0; i < ncount;  i++){
@@ -579,10 +567,10 @@ namespace seahorn {
 	  entries[i].first.reserve(arity);
 
 	  for(int32_t j = 0; j < arity; j++){
-	    Expr args_j_expr = decode_yval(args[j], efac, model, false);  // Assuming flat arrays.
+	    Expr args_j_expr = decode_yval(args[j], efac, model, false, nullptr, nullptr);  // Assuming flat arrays.
 	    entries[i].first[j] =  args_j_expr;
 	  }
-	  entries[i].second = decode_yval(val, efac, model, false);
+	  entries[i].second = decode_yval(val, efac, model, false, nullptr, nullptr);
 	}
 	
 	yices_delete_yval_vector(&yvec);
@@ -651,8 +639,6 @@ namespace seahorn {
       }
       else if (bv::isBvConst(expr)){
 	expr_type = bind::type(expr);
-
-
       }
       else if (bind::isConst<ARRAY_TY>(expr)){
 	is_array = true;
@@ -666,28 +652,6 @@ namespace seahorn {
 	assert(false && "not expecting anthing other than a constant");
 
       }
-
-      /*
-      //if this is sufficient we could simplify the ytype_t thingy.
-      Expr expr_sort = bind::typeOf(expr);
-
-
-      if(isOp<ARRAY_TY>(expr_sort)){
-        Expr domain = op::sort::arrayIndexTy(expr_sort);
-        Expr range  = op::sort::arrayValTy(expr_sort);
-      }
-
-      ytype_t ytyp_var;
-
-      if( !encode_type(expr_sort, ytyp_var) ){
-        llvm::errs() << " \n";
-        return nullptr;
-      }
-
-      bool is_array = ytyp_var.is_array;
-      */
-
-      
       yval_t yval;
       int32_t errcode = yices_get_value(model, yt_var, &yval);
 
@@ -703,7 +667,7 @@ namespace seahorn {
 	 Expr range  = nullptr;
 	 information here 
       */
-      return marshal_yices::decode_yval(yval,  efac, model, is_array);
+      return marshal_yices::decode_yval(yval, efac, model, is_array, domain, range);
 
     }
 

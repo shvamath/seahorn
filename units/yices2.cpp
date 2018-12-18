@@ -17,13 +17,6 @@ TEST_CASE("yices2.test") {
 
   llvm::errs () << "yices2 is fantastic" <<  "\n";
 
-  ytype_t ytp;
-  ExprFactory efac;
-
-
-  //marshal_yices().encode_type(sort::intTy(efac), ytp);
-
-
   llvm::errs() << yices::error_string() <<  "\n";
     
   CHECK(true);
