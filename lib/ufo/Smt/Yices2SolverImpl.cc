@@ -38,26 +38,29 @@ namespace seahorn {
       yices_library_initialize();
       /* the yices configuration structure */
       ctx_config_t *cfg;
-      
-      if ( logic.empty() && opts != nullptr ){
-	cfg = NULL;
-      } else {
-	cfg = yices_new_config();
-	if ( ! logic.empty() ){
-	  int32_t errcode = yices_default_config_for_logic(cfg, logic.c_str());
-	}
-	if ( opts != nullptr ){
-	  /* iterate through the opts map and set the keys */
 
-	}
-	
+      if ( logic.empty() && opts != nullptr ){
+        cfg = NULL;
+      } else {
+        cfg = yices_new_config();
+        if ( ! logic.empty() ){
+          int32_t errcode = yices_default_config_for_logic(cfg, logic.c_str());
+        }
+        if ( opts != nullptr ){
+          /* iterate through the opts map and set the keys */
+          std::map<std::string, std::string>::iterator it;
+          for ( it = opts->begin(); it != opts->end(); it++ ){
+            yices_set_config(cfg, it->first.c_str(), it->second.c_str());
+          }
+        }
+
       }
-      
+
       d_ctx = yices_new_context(cfg);
       yices_free_config(cfg);
-      
+
     }
-    
+
     yices_impl::~yices_impl(){
       yices_free_context(d_ctx);
     }
@@ -69,15 +72,15 @@ namespace seahorn {
     bool yices_impl::add(expr::Expr exp){
       term_t yt = marshal_yices::encode_term(exp, s_cache);
       if (yt == NULL_TERM){
-	llvm::errs() << "yices_impl::add:  failed to encode: " << *exp << "\n";
-	return false;
+        llvm::errs() << "yices_impl::add:  failed to encode: " << *exp << "\n";
+        return false;
       }
       int32_t errcode = yices_assert_formula(d_ctx, yt);
       if (errcode == -1){
-	llvm::errs() << "yices_impl::add:  yices_assert_formula failed: " << yices::error_string() << "\n";
-	return false;
+        llvm::errs() << "yices_impl::add:  yices_assert_formula failed: " << yices::error_string() << "\n";
+        return false;
       }
-      
+
       return true;
     }
 
@@ -91,7 +94,7 @@ namespace seahorn {
       case STATUS_UNKNOWN: return solver::Solver::UNKNOWN;
       case STATUS_INTERRUPTED: return solver::Solver::UNKNOWN;
       default:
-	return solver::Solver::UNKNOWN;
+        return solver::Solver::UNKNOWN;
       }
       return solver::Solver::UNKNOWN;
     }
