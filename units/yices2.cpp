@@ -15,9 +15,66 @@ TEST_CASE("yices2.test") {
   using namespace seahorn;
   using namespace yices;
 
-  llvm::errs () << "yices2 is fantastic" <<  "\n";
+  seahorn::solver::solver_options opts;
+  expr::ExprFactory efac;
+  std::string logic("default");
 
-  llvm::errs() << yices::error_string() <<  "\n";
-    
+  yices_impl solver(logic, &opts, efac);
+
+
+  Expr x = bind::intConst (mkTerm<string> ("x", efac));
+  Expr y = bind::intConst (mkTerm<string> ("y", efac));
+
+  Expr e1 = mk<EQ>(x, mkTerm<mpz_class>(0, efac));
+  Expr e2 = mk<EQ>(y, mkTerm<mpz_class>(5, efac));
+  Expr e3 = mk<GT>(x, y);
+  Expr e4 = mk<GT>(y, x);
+
+  std::vector<Expr> args({e1, e2, e4});
+
+  Expr e = mknary<AND>(args.begin(), args.end());
+
+  bool success = solver.add(e);
+
+  if (success){
+
+    auto answer = solver.check();
+
+    llvm::errs () << "yices2 is fantastic: " <<  answer <<  "\n";
+
+    llvm::errs() << yices::error_string() <<  "\n";
+
+
+  } else {
+
+    llvm::errs () << "fix your code Ian.\n";
+
+  }
+
+
+
+
+ EZ3 ctx(efac);
+ ZSolver<EZ3> s(ctx);
+ s.assertExpr(e);
+ auto r = s.solve();
+
+  if (r) {
+    llvm::errs() << "SAT" << "\n";
+
+    auto m = s.getModel();
+
+    Expr xval = m.eval(x);
+
+    llvm::errs() << *xval  << "\n";
+
+
+  } else if (!r) {
+    llvm::errs() << "UNSAT" << "\n";
+  } else {
+    llvm::errs() << "UNKNOWN" << "\n";
+  }
+
+
   CHECK(true);
 }

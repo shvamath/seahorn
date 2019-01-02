@@ -10,9 +10,9 @@ namespace seahorn {
   namespace yices {
 
     static term_t encode_term_fail(Expr e, const char* error_msg) {
-      
+
       if (error_msg == nullptr){
-	error_msg = yices::error_string().c_str();
+        error_msg = yices::error_string().c_str();
       }
       llvm::errs() << "encode_term: failed on "
                    << *e
@@ -42,6 +42,7 @@ namespace seahorn {
 
 
     type_t marshal_yices::encode_type(Expr e){
+
       type_t res = NULL_TYPE;
       if (isOpX<INT_TY>(e))
         res = yices_int_type();
@@ -53,9 +54,9 @@ namespace seahorn {
         type_t domain = encode_type(e->left());
         type_t range = encode_type(e->right());
 
-	if(domain != NULL_TYPE && range != NULL_TYPE){
-	  res = yices_function_type1(domain, range);
-	}
+        if(domain != NULL_TYPE && range != NULL_TYPE){
+          res = yices_function_type1(domain, range);
+        }
       }
       else if (isOpX<BVSORT>(e)){
         res = yices_bv_type(bv::width(e));
@@ -72,21 +73,21 @@ namespace seahorn {
       Expr etype = nullptr;
 
       if (yices_type_is_bool(ytau)){
-	etype = sort::boolTy(efac);
+        etype = sort::boolTy(efac);
       }
       else if (yices_type_is_int(ytau)) {
-	etype = sort::intTy(efac);
+        etype = sort::intTy(efac);
       }
       else if (yices_type_is_real(ytau)) {
-	etype = sort::realTy(efac);
+        etype = sort::realTy(efac);
       }
       else if (yices_type_is_bitvector(ytau)){
-	uint32_t bvsize = yices_bvtype_size(ytau);
-	etype = bv::bvsort(bvsize, efac);
+        uint32_t bvsize = yices_bvtype_size(ytau);
+        etype = bv::bvsort(bvsize, efac);
       } else {
-	char* ytaustr = yices_type_to_string(ytau, 80, 100, 0);
-	llvm::errs() << "Unhandled sort: " <<  ytaustr << "\n";
-	yices_free_string(ytaustr);
+        char* ytaustr = yices_type_to_string(ytau, 80, 100, 0);
+        llvm::errs() << "Unhandled sort: " <<  ytaustr << "\n";
+        yices_free_string(ytaustr);
       }
       return etype;
     }
@@ -101,12 +102,16 @@ namespace seahorn {
       if (isOpX<FALSE>(e))
         return yices_false();
 
+      //llvm::errs() << "pre cache\n";
+
       /** check the cache */
       {
         auto it = cache.find(e);
         if (it != cache.end())
           return it->second;
       }
+
+      //llvm::errs() << "post cache\n";
 
       term_t res = NULL_TERM;
 
@@ -138,7 +143,7 @@ namespace seahorn {
         type_t var_type;
         if (bind::isBoolConst(e)){
           var_type = yices_bool_type();
-	} else if (bind::isIntConst(e)) {
+        } else if (bind::isIntConst(e)) {
           var_type = yices_int_type();
         } else if (bind::isRealConst(e)) {
           var_type = yices_real_type();
@@ -166,7 +171,7 @@ namespace seahorn {
       } else if (op::bv::isBvConst(e)) {
         // TODO
       } else if (bind::isConst<ARRAY_TY>(e)) {
-	// TODO
+        // TODO
       }
       /** function declaration */
       else if (bind::isFdecl(e)) {
@@ -175,17 +180,17 @@ namespace seahorn {
         std::vector<type_t> domain(arity);
         for (size_t i = 0; i < bind::domainSz(e); ++i) {
           type_t yt_i = encode_type(bind::domainTy(e, i));
-	  if (yt_i == NULL_TYPE){
+          if (yt_i == NULL_TYPE){
             encode_term_fail(e, "fdecl domain encode error");
-	    return NULL_TERM;
+            return NULL_TERM;
           }
           domain[i] = yt_i;
         }
 
         type_t range = encode_type(bind::rangeTy(e));
-	if (range == NULL_TYPE){
-	  encode_term_fail(e, "fdecl range encode error");
-	  return NULL_TERM;
+        if (range == NULL_TYPE){
+          encode_term_fail(e, "fdecl range encode error");
+          return NULL_TERM;
         }
 
         type_t declaration_type = yices_function_type(e->arity(), &domain[0], range);
@@ -226,15 +231,20 @@ namespace seahorn {
 
       }
 
+      //llvm::errs() << "end of atomic terms\n";
+
       // XXX: I have no idea why we are not caching composite terms.
 
       // -- cache the result for unmarshaling
-      if (res) {
+      if (res !=  NULL_TERM) {
         cache[e] = res;
         return res;
       }
 
       int arity = e->arity();
+
+      //llvm::errs() << "arity: " << arity <<  "\n";
+
 
       /** other terminal expressions */
       if (arity == 0) {
@@ -411,6 +421,8 @@ namespace seahorn {
                  isOpX<XOR>(e) || isOpX<PLUS>(e) || isOpX<MINUS>(e) ||
                  isOpX<MULT>(e) || isOpX<STORE>(e) || isOpX<ARRAY_MAP>(e)) {
 
+        //llvm::errs() << "We are here " << isOp<AND>(e) << "\n";
+
         std::vector<term_t> args;
         for (ENode::args_iterator it = e->args_begin(), end = e->args_end();
              it != end; ++it) {
@@ -423,6 +435,7 @@ namespace seahorn {
           res = yices_ite(args[0], args[1], args[2]);
         } else if (isOp<AND>(e)) {
           res = yices_and(args.size(), &args[0]);
+          llvm::errs() << "res = " << res << "\n";
         }
         else if (isOp<OR>(e))
           res = yices_or(args.size(), &args[0]);
@@ -461,48 +474,48 @@ namespace seahorn {
         int32_t value;
         errcode = yices_val_get_bool(model, &yval, &value);
         if(errcode == -1){
-	  llvm::errs() << "yices_val_get_bool failed: " << yices::error_string() << "\n";
+          llvm::errs() << "yices_val_get_bool failed: " << yices::error_string() << "\n";
         }
         res = value == 1 ? mk<TRUE>(efac) : mk<FALSE>(efac);
         break;
       }
       case YVAL_RATIONAL: {
-	// We try to get the thing as an MPZ first, if that fails, then we get an MPQ.
-	mpz_t z;
-	mpz_init(z);
+        // We try to get the thing as an MPZ first, if that fails, then we get an MPQ.
+        mpz_t z;
+        mpz_init(z);
         errcode = yices_val_get_mpz(model, &yval, z);
-	if(errcode != -1){
-	  mpz_class zpp(z);
-	  res = mkTerm(zpp, efac);
-	  mpz_clear(z);
-	  break;
-	}
-	mpz_clear(z);
-	// We didn't succeed in extracting it out as a mpz, so get it as a mpz.
-	mpq_t q;
+        if(errcode != -1){
+          mpz_class zpp(z);
+          res = mkTerm(zpp, efac);
+          mpz_clear(z);
+          break;
+        }
+        mpz_clear(z);
+        // We didn't succeed in extracting it out as a mpz, so get it as a mpz.
+        mpq_t q;
         mpq_init(q);
         errcode = yices_val_get_mpq(model, &yval, q);
-	if (errcode == -1){
-	  llvm::errs() << "yices_val_get_bool failed: " << yices::error_string() << "\n";
-	} else {
-	  mpq_class qpp(q);
-	  res = mkTerm(qpp, efac);
-	}
+        if (errcode == -1){
+          llvm::errs() << "yices_val_get_bool failed: " << yices::error_string() << "\n";
+        } else {
+          mpq_class qpp(q);
+          res = mkTerm(qpp, efac);
+        }
         mpq_clear(q);
         break;
       }
       case YVAL_BV: {
         uint32_t n = yices_val_bitsize(model, &yval);
         if (n == 0){
-	  llvm::errs() << "yices_val_bitsize failed: " << yices::error_string() << "\n";
+          llvm::errs() << "yices_val_bitsize failed: " << yices::error_string() << "\n";
           return nullptr;
         }
         int32_t vals[n];
         errcode = yices_val_get_bv(model, &yval, vals);
-	if (errcode == -1){
-	  llvm::errs() << "yices_val_get_bv failed: " << yices::error_string() << "\n";
+        if (errcode == -1){
+          llvm::errs() << "yices_val_get_bv failed: " << yices::error_string() << "\n";
           return nullptr;
-	}
+        }
         char cvals[n];
         for(int32_t i = 0; i < n; i++){
           cvals[i] = vals[i] ? '1' : '0';
@@ -512,91 +525,91 @@ namespace seahorn {
         break;
       }
       case YVAL_SCALAR: {
-	llvm::errs() << "Not expecting a scalar.\n";
-	return nullptr;
+        llvm::errs() << "Not expecting a scalar.\n";
+        return nullptr;
       }
       case YVAL_ALGEBRAIC: {
-	llvm::errs() << "Not expecting an algebraic.\n";
-	return nullptr;
+        llvm::errs() << "Not expecting an algebraic.\n";
+        return nullptr;
       }
       case YVAL_TUPLE: {
-	llvm::errs() << "Not expecting an tuple.\n";
-	return nullptr;
+        llvm::errs() << "Not expecting an tuple.\n";
+        return nullptr;
       }
       case YVAL_FUNCTION: {
-	uint32_t arity = yices_val_function_arity(model, &yval);
-	
-	if (isArray){
-	  if (arity != 1){
-	    llvm::errs() << "Not expecting an array arity different from 1.\n";
-	    return nullptr;
-	  }
-	}
-	
-	yval_vector_t yvec;
-	
-	yices_init_yval_vector(&yvec);
+        uint32_t arity = yices_val_function_arity(model, &yval);
 
-	yval_t def_val;
-	  
-	errcode = yices_val_expand_function(model, &yval, &def_val, &yvec);
-	
-	if (errcode == -1){
-	  llvm::errs() << "yices_val_expand_function failed: " << yices::error_string() << "\n";
+        if (isArray){
+          if (arity != 1){
+            llvm::errs() << "Not expecting an array arity different from 1.\n";
+            return nullptr;
+          }
+        }
+
+        yval_vector_t yvec;
+
+        yices_init_yval_vector(&yvec);
+
+        yval_t def_val;
+
+        errcode = yices_val_expand_function(model, &yval, &def_val, &yvec);
+
+        if (errcode == -1){
+          llvm::errs() << "yices_val_expand_function failed: " << yices::error_string() << "\n";
           return nullptr;
-	}
+        }
 
-	Expr def_val_expr = decode_yval(def_val, efac, model, false, nullptr, nullptr);  // Assuming flat arrays.
+        Expr def_val_expr = decode_yval(def_val, efac, model, false, nullptr, nullptr);  // Assuming flat arrays.
 
-	uint32_t ncount = yvec.size;
+        uint32_t ncount = yvec.size;
 
-	//  sequence of (args -> val) pairs
-	std::vector<std::pair<ExprVector, Expr>> entries(ncount);
-	
-	for(int32_t i = 0; i < ncount;  i++){
-	  yval_t args[arity];
-	  yval_t val;
-	  errcode = yices_val_expand_mapping(model, &yvec.data[i], args, &val);
+        //  sequence of (args -> val) pairs
+        std::vector<std::pair<ExprVector, Expr>> entries(ncount);
 
-	  if (errcode == -1){
-	    llvm::errs() << "yices_val_expand_mapping failed: " << yices::error_string() << "\n";
-	    return nullptr;
-	  }
+        for(int32_t i = 0; i < ncount;  i++){
+          yval_t args[arity];
+          yval_t val;
+          errcode = yices_val_expand_mapping(model, &yvec.data[i], args, &val);
+
+          if (errcode == -1){
+            llvm::errs() << "yices_val_expand_mapping failed: " << yices::error_string() << "\n";
+            return nullptr;
+          }
 
 
-	  entries[i].first.reserve(arity);
+          entries[i].first.reserve(arity);
 
-	  for(int32_t j = 0; j < arity; j++){
-	    Expr args_j_expr = decode_yval(args[j], efac, model, false, nullptr, nullptr);  // Assuming flat arrays.
-	    entries[i].first[j] =  args_j_expr;
-	  }
-	  entries[i].second = decode_yval(val, efac, model, false, nullptr, nullptr);
-	}
-	
-	yices_delete_yval_vector(&yvec);
+          for(int32_t j = 0; j < arity; j++){
+            Expr args_j_expr = decode_yval(args[j], efac, model, false, nullptr, nullptr);  // Assuming flat arrays.
+            entries[i].first[j] =  args_j_expr;
+          }
+          entries[i].second = decode_yval(val, efac, model, false, nullptr, nullptr);
+        }
 
-	Expr exp_i;
-	
-	if (isArray){
-	  // make the array expr
-	  exp_i = op::array::constArray (domain, def_val_expr);
+        yices_delete_yval_vector(&yvec);
 
-	  for(int32_t i = 0; i < ncount;  i++){
-	    exp_i = op::array::store(exp_i, entries[i].first[0], entries[i].second);
-	  }
+        Expr exp_i;
 
-	  res = exp_i;
-	  
-	} else {
-	  //make the function expr
-	  std::vector<Expr> fentries(ncount);
-	  for(int32_t i = 0; i < ncount;  i++){
-	    fentries[i] = op::mdl::fentry(entries[i].first, entries[i].second);
-	  }
+        if (isArray){
+          // make the array expr
+          exp_i = op::array::constArray (domain, def_val_expr);
 
-	  res = op::mdl::ftable (fentries, def_val_expr);
+          for(int32_t i = 0; i < ncount;  i++){
+            exp_i = op::array::store(exp_i, entries[i].first[0], entries[i].second);
+          }
 
-	}
+          res = exp_i;
+
+        } else {
+          //make the function expr
+          std::vector<Expr> fentries(ncount);
+          for(int32_t i = 0; i < ncount;  i++){
+            fentries[i] = op::mdl::fentry(entries[i].first, entries[i].second);
+          }
+
+          res = op::mdl::ftable (fentries, def_val_expr);
+
+        }
 
         break;
       }
@@ -605,7 +618,7 @@ namespace seahorn {
       }
 
 
-      
+
       return res;
     }
 
@@ -621,35 +634,35 @@ namespace seahorn {
         return nullptr;
       }
 
-      
+
       bool is_array = false;;
       Expr expr_type = nullptr;
       Expr domain = nullptr;
       Expr range  = nullptr;
-      
+
       if( bind::isBoolConst(expr) ) {
-	expr_type = bind::type(expr);
-      } 
+        expr_type = bind::type(expr);
+      }
       else if (bind::isIntConst(expr)){
-	expr_type = bind::type(expr);
+        expr_type = bind::type(expr);
       }
       else if (bind::isRealConst(expr)){
-	expr_type = bind::type(expr);
+        expr_type = bind::type(expr);
 
       }
       else if (bv::isBvConst(expr)){
-	expr_type = bind::type(expr);
+        expr_type = bind::type(expr);
       }
       else if (bind::isConst<ARRAY_TY>(expr)){
-	is_array = true;
-	expr_type = bind::type(expr);
+        is_array = true;
+        expr_type = bind::type(expr);
         domain = op::sort::arrayIndexTy(expr_type);
         range  = op::sort::arrayValTy(expr_type);
-	
+
       }
       else {
 
-	assert(false && "not expecting anthing other than a constant");
+        assert(false && "not expecting anthing other than a constant");
 
       }
       yval_t yval;
@@ -660,12 +673,12 @@ namespace seahorn {
         return nullptr;
       }
 
-      /* pass in the 
-	 bool is_array = false;;
-	 Expr expr_type = nullptr;
-	 Expr domain = nullptr;
-	 Expr range  = nullptr;
-	 information here 
+      /* pass in the
+         bool is_array = false;;
+         Expr expr_type = nullptr;
+         Expr domain = nullptr;
+         Expr range  = nullptr;
+         information here
       */
       return marshal_yices::decode_yval(yval, efac, model, is_array, domain, range);
 
