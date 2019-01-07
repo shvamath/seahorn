@@ -4,6 +4,7 @@
 #include "yices.h"
 
 #include "Model.hpp"
+#include "Yices2SolverImpl.hpp"
 
 namespace seahorn {
   namespace yices {
@@ -19,13 +20,14 @@ namespace seahorn {
       /* the underlying yices model */
       model_t *d_model;
 
-      std::map<expr::Expr, term_t> &d_cache;
+      /* the underlying context */
+      yices_impl &d_solver;
 
       expr::ExprFactory &d_efac;
 
 
     public:
-      model_impl(model_t *model, std::map<expr::Expr, term_t> &cache, expr::ExprFactory &efac);
+      model_impl(model_t *model, yices_impl &solver, expr::ExprFactory &efac);
 
       ~model_impl();
 

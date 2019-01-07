@@ -13,8 +13,6 @@ using namespace expr;
 namespace seahorn {
   namespace yices {
 
-    static std::map<expr::Expr, term_t> s_cache;
-
 
     /* flag to indicate library status; we are single threaded so we can be lazy. */
     static bool s_yices_lib_initialized = false;
@@ -26,7 +24,6 @@ namespace seahorn {
         yices_init();
       }
     }
-
 
 
 
@@ -66,11 +63,13 @@ namespace seahorn {
     }
 
 
-
+    yices_impl::ycache_t& yices_impl::get_cache(void){
+      return d_cache;
+    }
 
 
     bool yices_impl::add(expr::Expr exp){
-      term_t yt = marshal_yices::encode_term(exp, s_cache);
+      term_t yt = marshal_yices::encode_term(exp, get_cache());
       if (yt == NULL_TERM){
         llvm::errs() << "yices_impl::add:  failed to encode: " << *exp << "\n";
         return false;
@@ -112,7 +111,7 @@ namespace seahorn {
     /** Get a model   WHO FREES THE MODEL */
     solver::model* yices_impl::get_model(){
       model_t *model = yices_get_model(d_ctx, 1); //BD & JN: keep subst??
-      return new model_impl(model, s_cache, d_efac);
+      return new model_impl(model, *this, d_efac);
     }
 
 

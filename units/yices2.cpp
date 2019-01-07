@@ -15,11 +15,10 @@ TEST_CASE("yices2.test") {
   using namespace seahorn;
   using namespace yices;
 
+
   seahorn::solver::solver_options opts;
   expr::ExprFactory efac;
   std::string logic("default");
-
-  yices_impl solver(logic, &opts, efac);
 
 
   Expr x = bind::intConst (mkTerm<string> ("x", efac));
@@ -34,7 +33,13 @@ TEST_CASE("yices2.test") {
 
   Expr e = mknary<AND>(args.begin(), args.end());
 
+  yices_impl solver(logic, &opts, efac);
+  
+  
   bool success = solver.add(e);
+
+
+
 
   if (success){
 
@@ -51,7 +56,7 @@ TEST_CASE("yices2.test") {
 
   }
 
-
+  /*
 
 
  EZ3 ctx(efac);
@@ -74,7 +79,9 @@ TEST_CASE("yices2.test") {
   } else {
     llvm::errs() << "UNKNOWN" << "\n";
   }
+  */
 
+  llvm::errs() << "FINISHED\n";
 
   CHECK(true);
 }

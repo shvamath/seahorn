@@ -16,10 +16,10 @@ namespace seahorn {
     }
 
 
-
-    
     /* the yices solver; actually a yices context. */
     class yices_impl : public solver::Solver {
+
+      typedef  std::map<expr::Expr, term_t> ycache_t;
 
       ctx_config_t *d_cfg;
 
@@ -27,6 +27,8 @@ namespace seahorn {
       context_t *d_ctx;
 
       expr::ExprFactory &d_efac;
+
+      ycache_t d_cache;
 
     public:
 
@@ -49,6 +51,9 @@ namespace seahorn {
 
       /** Get a model */
       solver::model *get_model();
+
+
+      ycache_t& get_cache(void);
 
 
     };
