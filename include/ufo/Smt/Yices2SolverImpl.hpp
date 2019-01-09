@@ -33,7 +33,7 @@ namespace seahorn {
     public:
 
       /* how should we set the default logic? */
-      yices_impl(std::string logic, seahorn::solver::solver_options *opts, expr::ExprFactory &efac);
+      yices_impl(seahorn::solver::solver_options *opts, expr::ExprFactory &efac);
 
 
       ~yices_impl();

@@ -28,33 +28,28 @@ namespace seahorn {
 
 
     /* how should we set the default logic? */
-    yices_impl::yices_impl(std::string logic, seahorn::solver::solver_options *opts, expr::ExprFactory &efac):
+    yices_impl::yices_impl(seahorn::solver::solver_options *opts, expr::ExprFactory &efac):
       Solver(opts),
       d_efac(efac)
     {
       yices_library_initialize();
       /* the yices configuration structure */
-      ctx_config_t *cfg;
+      ctx_config_t *cfg = nullptr;
 
-      if ( logic.empty() && opts != nullptr ){
-        cfg = NULL;
-      } else {
+      if ( opts != nullptr ){
         cfg = yices_new_config();
-        if ( ! logic.empty() ){
-          int32_t errcode = yices_default_config_for_logic(cfg, logic.c_str());
-        }
-        if ( opts != nullptr ){
-          /* iterate through the opts map and set the keys */
-          std::map<std::string, std::string>::iterator it;
-          for ( it = opts->begin(); it != opts->end(); it++ ){
-            yices_set_config(cfg, it->first.c_str(), it->second.c_str());
-          }
-        }
-
+	/* iterate through the opts map and set the keys */
+	std::map<std::string, std::string>::iterator it;
+	for ( it = opts->begin(); it != opts->end(); it++ ){
+	  yices_set_config(cfg, it->first.c_str(), it->second.c_str());
+	}
       }
 
       d_ctx = yices_new_context(cfg);
-      yices_free_config(cfg);
+
+      if (cfg != nullptr){
+	yices_free_config(cfg);
+      }
 
     }
 
