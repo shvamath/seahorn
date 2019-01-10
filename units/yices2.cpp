@@ -41,12 +41,33 @@ TEST_CASE("yices2.test") {
 
   if (success){
 
-    auto answer = solver.check();
+    solver::Solver::result answer = solver.check();
 
-    llvm::errs () << "yices2 is fantastic: " <<  answer <<  "\n";
+    if(answer == solver::Solver::ERROR){
 
-    llvm::errs() << yices::error_string() <<  "\n";
+      llvm::errs() << yices::error_string() <<  "\n";
 
+    } else {
+
+      llvm::errs () << "yices2 is fantastic: " <<  answer <<  "\n";
+
+      if (answer == solver::Solver::SAT){
+
+	solver::model *model = solver.get_model();
+
+	Expr valx = model->eval(x, false);
+	Expr valy = model->eval(y, false);
+
+	llvm::errs () << "valx = " << *valx  << "\n";
+	llvm::errs () << "valy = " << *valy  << "\n";
+       
+	llvm::errs () << *model << "\n";
+
+	delete model;
+      }
+    }
+
+    
 
   } else {
 
@@ -66,9 +87,12 @@ TEST_CASE("yices2.test") {
     auto m = s.getModel();
 
     Expr xval = m.eval(x);
+    Expr yval = m.eval(y);
 
-    llvm::errs() << *xval  << "\n";
+    llvm::errs() << "xval = "  << *xval  << "\n";
+    llvm::errs() << "yval = "  << *yval  << "\n";
 
+    llvm::errs() << m <<  "\n";
 
   } else if (!r) {
     llvm::errs() << "UNSAT" << "\n";

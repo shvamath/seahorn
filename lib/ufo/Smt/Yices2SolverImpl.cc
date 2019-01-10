@@ -87,6 +87,7 @@ namespace seahorn {
       case STATUS_SAT: return solver::Solver::SAT;
       case STATUS_UNKNOWN: return solver::Solver::UNKNOWN;
       case STATUS_INTERRUPTED: return solver::Solver::UNKNOWN;
+      case STATUS_ERROR: return solver::Solver::ERROR;
       default:
         return solver::Solver::UNKNOWN;
       }

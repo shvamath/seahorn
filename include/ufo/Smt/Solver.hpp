@@ -22,7 +22,10 @@ namespace seahorn {
                    /** Formula is unsatisfiable */
                    UNSAT,
                    /** The result is unknown */
-                   UNKNOWN
+                   UNKNOWN,
+                   /** There was an error    */
+                   ERROR,
+		   
       };
 
 
@@ -44,6 +47,7 @@ namespace seahorn {
 
       Solver(solver_options *options): d_options(options) { }
 
+      
 
     };
 

@@ -29,9 +29,9 @@ namespace seahorn {
       return marshal_yices::eval(exp,  d_efac, d_solver.get_cache(), complete, d_model);
     }
 
-    void model_impl::print(std::ostream& strm) const {
+    void model_impl::print(llvm::raw_ostream& o) const {
       char* model_as_string = yices_model_to_string(d_model, width, height, offset);
-      strm << model_as_string;
+      o << model_as_string;
       yices_free_string(model_as_string);
     }
 

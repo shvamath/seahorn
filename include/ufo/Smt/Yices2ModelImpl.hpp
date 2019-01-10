@@ -34,7 +34,7 @@ namespace seahorn {
       //yices ignores the complete flag
       expr::Expr eval(expr::Expr expr, bool complete);
 
-      void print(std::ostream& str) const;
+      void print(llvm::raw_ostream& o) const;
 
     };
 
