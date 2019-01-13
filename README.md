@@ -22,6 +22,12 @@
 
 # Installation #
 
+Before proceeding with installation make sure you have all of the following packages:
+* `sudo apt install cmake build-essential ninja-build llvm-6.0 clang-6.0 lld-6.0 git-svn libboost-dev subversion g++-7-multilib gcc-multilib lib32stdc++7 libgmp-dev libgmpxx4ldbl libgraphviz-dev`
+
+You may also need to install the following packages if getting warning: `sudo apt install libncurses5-dev ncurses-doc`
+
+Now you should be able to install seahorn flawlessly:
 * `cd seahorn ; mkdir build ; cd build`
 * `cmake -DCMAKE_INSTALL_PREFIX=run ../ `
   (Add `-GNinja` to use the [Ninja](https://ninja-build.org/) generator instead of the default one.
